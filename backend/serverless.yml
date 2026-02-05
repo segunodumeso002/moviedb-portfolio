@@ -1,0 +1,85 @@
+service: moviedb-backend
+
+provider:
+  name: aws
+  runtime: nodejs18.x
+  region: us-east-1
+  stage: ${opt:stage, 'dev'}
+  environment:
+    NODE_ENV: ${opt:stage, 'dev'}
+    RDS_ENDPOINT: ${env:RDS_ENDPOINT, 'localhost'}
+    APP_DB_PASSWORD: ${env:APP_DB_PASSWORD, 'password'}
+    JWT_SECRET: ${env:JWT_SECRET, 'your-jwt-secret-key'}
+    CORS_ORIGIN: ${env:CORS_ORIGIN, 'http://localhost:5173'}
+  iamRoleStatements:
+    - Effect: Allow
+      Action:
+        - rds-db:connect
+        - rds:DescribeDBInstances
+      Resource: "*"
+
+useDotenv: true
+
+plugins:
+  - serverless-offline
+  - serverless-dotenv-plugin
+
+functions:
+  # Authentication
+  register:
+    handler: src/handlers/auth.register
+    events:
+      - http:
+          path: /auth/register
+          method: post
+          cors: true
+
+  login:
+    handler: src/handlers/auth.login
+    events:
+      - http:
+          path: /auth/login
+          method: post
+          cors: true
+
+  # User Profile
+  getProfile:
+    handler: src/handlers/user.getProfile
+    events:
+      - http:
+          path: /user/profile
+          method: get
+          cors: true
+
+  updateProfile:
+    handler: src/handlers/user.updateProfile
+    events:
+      - http:
+          path: /user/profile
+          method: put
+          cors: true
+
+  # Favorites
+  getFavorites:
+    handler: src/handlers/favorites.getFavorites
+    events:
+      - http:
+          path: /user/favorites
+          method: get
+          cors: true
+
+  addFavorite:
+    handler: src/handlers/favorites.addFavorite
+    events:
+      - http:
+          path: /user/favorites
+          method: post
+          cors: true
+
+  removeFavorite:
+    handler: src/handlers/favorites.removeFavorite
+    events:
+      - http:
+          path: /user/favorites/{id}
+          method: delete
+          cors: true
