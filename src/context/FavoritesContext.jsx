@@ -21,6 +21,8 @@ export const FavoritesProvider = ({ children }) => {
     if (isAuthenticated) {
       loadFavorites()
     } else {
+      // Clear favorites when logged out
+      setFavorites([])
       // Load from localStorage for non-authenticated users
       const savedFavorites = localStorage.getItem('moviedb-favorites')
       if (savedFavorites) {
@@ -45,7 +47,7 @@ export const FavoritesProvider = ({ children }) => {
         media_type: fav.media_type,
         title: fav.title,
         poster_path: fav.poster_path,
-        vote_average: fav.vote_average,
+        vote_average: parseFloat(fav.vote_average) || 0,
         release_date: fav.release_date
       })))
     } catch (error) {

@@ -65,7 +65,7 @@ function Favorites() {
                       {(item.release_date || item.first_air_date)?.split('-')[0]}
                     </p>
                     <span className="px-1 sm:px-2 py-1 bg-yellow-600 text-xs rounded">
-                      ⭐ {item.vote_average?.toFixed(1)}
+                      ⭐ {item.vote_average ? Number(item.vote_average).toFixed(1) : 'N/A'}
                     </span>
                   </div>
                 </div>

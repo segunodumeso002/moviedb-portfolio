@@ -5,6 +5,13 @@ const { success, error } = require('../utils/response');
 
 const register = async (event) => {
   try {
+    console.log('Register function started');
+    console.log('Environment:', { 
+      NODE_ENV: process.env.NODE_ENV,
+      RDS_ENDPOINT: process.env.RDS_ENDPOINT,
+      JWT_SECRET: process.env.JWT_SECRET ? 'SET' : 'NOT SET'
+    });
+
     const { email, password, firstName, lastName } = JSON.parse(event.body);
 
     if (!email || !password) {
@@ -31,12 +38,15 @@ const register = async (event) => {
 
     return success({ user, token });
   } catch (err) {
-    return error('Registration failed', 500);
+    console.error('Registration error:', err);
+    console.error('Error stack:', err.stack);
+    return error(`Registration failed: ${err.message}`, 500);
   }
 };
 
 const login = async (event) => {
   try {
+    console.log('Login function started');
     const { email, password } = JSON.parse(event.body);
 
     if (!email || !password) {
@@ -69,7 +79,9 @@ const login = async (event) => {
       token
     });
   } catch (err) {
-    return error('Login failed', 500);
+    console.error('Login error:', err);
+    console.error('Error stack:', err.stack);
+    return error(`Login failed: ${err.message}`, 500);
   }
 };
 

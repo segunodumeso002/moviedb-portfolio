@@ -4,18 +4,29 @@ provider:
   name: aws
   runtime: nodejs18.x
   region: us-east-1
-  stage: ${opt:stage, 'dev'}
+  stage: ${opt:stage, 'prod'}
   environment:
-    NODE_ENV: ${opt:stage, 'dev'}
-    RDS_ENDPOINT: ${env:RDS_ENDPOINT, 'localhost'}
-    APP_DB_PASSWORD: ${env:APP_DB_PASSWORD, 'password'}
-    JWT_SECRET: ${env:JWT_SECRET, 'your-jwt-secret-key'}
-    CORS_ORIGIN: ${env:CORS_ORIGIN, 'http://localhost:5173'}
+    NODE_ENV: production
+    RDS_ENDPOINT: ${env:RDS_ENDPOINT}
+    RDS_PASSWORD: ${env:RDS_PASSWORD}
+    APP_DB_PASSWORD: ${env:APP_DB_PASSWORD}
+    JWT_SECRET: ${env:JWT_SECRET}
+    CORS_ORIGIN: ${env:CORS_ORIGIN}
+    DB_SSL: true
+  vpc:
+    securityGroupIds:
+      - sg-0563f4fe5404ecb98
+    subnetIds:
+      - subnet-0dea14ff596c46078
+      - subnet-0ae8e73715edb5335
   iamRoleStatements:
     - Effect: Allow
       Action:
         - rds-db:connect
         - rds:DescribeDBInstances
+        - ec2:CreateNetworkInterface
+        - ec2:DescribeNetworkInterfaces
+        - ec2:DeleteNetworkInterface
       Resource: "*"
 
 useDotenv: true
@@ -25,6 +36,16 @@ plugins:
   - serverless-dotenv-plugin
 
 functions:
+  # Temporary function to create database tables
+  createTables:
+    handler: src/handlers/create-tables.createTables
+    timeout: 30
+
+  # Temporary function to fix database permissions
+  fixPermissions:
+    handler: src/handlers/fix-permissions.fixPermissions
+    timeout: 30
+
   # Authentication
   register:
     handler: src/handlers/auth.register
@@ -32,7 +53,12 @@ functions:
       - http:
           path: /auth/register
           method: post
-          cors: true
+          cors:
+            origin: 'https://mymoviepalour.netlify.app'
+            headers:
+              - Content-Type
+              - Authorization
+            allowCredentials: false
 
   login:
     handler: src/handlers/auth.login
@@ -40,7 +66,12 @@ functions:
       - http:
           path: /auth/login
           method: post
-          cors: true
+          cors:
+            origin: 'https://mymoviepalour.netlify.app'
+            headers:
+              - Content-Type
+              - Authorization
+            allowCredentials: false
 
   # User Profile
   getProfile:
@@ -49,7 +80,12 @@ functions:
       - http:
           path: /user/profile
           method: get
-          cors: true
+          cors:
+            origin: 'https://mymoviepalour.netlify.app'
+            headers:
+              - Content-Type
+              - Authorization
+            allowCredentials: false
 
   updateProfile:
     handler: src/handlers/user.updateProfile
@@ -57,7 +93,12 @@ functions:
       - http:
           path: /user/profile
           method: put
-          cors: true
+          cors:
+            origin: 'https://mymoviepalour.netlify.app'
+            headers:
+              - Content-Type
+              - Authorization
+            allowCredentials: false
 
   # Favorites
   getFavorites:
@@ -66,7 +107,12 @@ functions:
       - http:
           path: /user/favorites
           method: get
-          cors: true
+          cors:
+            origin: 'https://mymoviepalour.netlify.app'
+            headers:
+              - Content-Type
+              - Authorization
+            allowCredentials: false
 
   addFavorite:
     handler: src/handlers/favorites.addFavorite
@@ -74,7 +120,12 @@ functions:
       - http:
           path: /user/favorites
           method: post
-          cors: true
+          cors:
+            origin: 'https://mymoviepalour.netlify.app'
+            headers:
+              - Content-Type
+              - Authorization
+            allowCredentials: false
 
   removeFavorite:
     handler: src/handlers/favorites.removeFavorite
@@ -82,4 +133,9 @@ functions:
       - http:
           path: /user/favorites/{id}
           method: delete
-          cors: true
+          cors:
+            origin: 'https://mymoviepalour.netlify.app'
+            headers:
+              - Content-Type
+              - Authorization
+            allowCredentials: false

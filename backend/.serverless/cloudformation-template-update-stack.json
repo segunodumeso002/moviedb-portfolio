@@ -71,6 +71,18 @@
         }
       }
     },
+    "CreateTablesLogGroup": {
+      "Type": "AWS::Logs::LogGroup",
+      "Properties": {
+        "LogGroupName": "/aws/lambda/moviedb-backend-prod-createTables"
+      }
+    },
+    "FixPermissionsLogGroup": {
+      "Type": "AWS::Logs::LogGroup",
+      "Properties": {
+        "LogGroupName": "/aws/lambda/moviedb-backend-prod-fixPermissions"
+      }
+    },
     "RegisterLogGroup": {
       "Type": "AWS::Logs::LogGroup",
       "Properties": {
@@ -175,7 +187,10 @@
                   "Effect": "Allow",
                   "Action": [
                     "rds-db:connect",
-                    "rds:DescribeDBInstances"
+                    "rds:DescribeDBInstances",
+                    "ec2:CreateNetworkInterface",
+                    "ec2:DescribeNetworkInterfaces",
+                    "ec2:DeleteNetworkInterface"
                   ],
                   "Resource": "*"
                 }
@@ -196,8 +211,114 @@
               "lambdaRole"
             ]
           ]
-        }
+        },
+        "ManagedPolicyArns": [
+          {
+            "Fn::Join": [
+              "",
+              [
+                "arn:",
+                {
+                  "Ref": "AWS::Partition"
+                },
+                ":iam::aws:policy/service-role/AWSLambdaVPCAccessExecutionRole"
+              ]
+            ]
+          }
+        ]
       }
+    },
+    "CreateTablesLambdaFunction": {
+      "Type": "AWS::Lambda::Function",
+      "Properties": {
+        "Code": {
+          "S3Bucket": {
+            "Ref": "ServerlessDeploymentBucket"
+          },
+          "S3Key": "serverless/moviedb-backend/prod/1770608503492-2026-02-09T03:41:43.492Z/moviedb-backend.zip"
+        },
+        "Handler": "src/handlers/create-tables.createTables",
+        "Runtime": "nodejs18.x",
+        "FunctionName": "moviedb-backend-prod-createTables",
+        "MemorySize": 1024,
+        "Timeout": 30,
+        "Environment": {
+          "Variables": {
+            "NODE_ENV": "production",
+            "RDS_ENDPOINT": "moviedb-postgres.ckhec6syc2fy.us-east-1.rds.amazonaws.com",
+            "RDS_PASSWORD": "MovieDB2024!",
+            "APP_DB_PASSWORD": "SecurePassword2024!",
+            "JWT_SECRET": "fb22ea282609f2da51d5f35208b4152e92c38a4a5a7ad93fa4ec36a70e3e71979f145996",
+            "CORS_ORIGIN": "https://mymoviepalour.netlify.app",
+            "DB_SSL": "true",
+            "API_STAGE": "prod"
+          }
+        },
+        "Role": {
+          "Fn::GetAtt": [
+            "IamRoleLambdaExecution",
+            "Arn"
+          ]
+        },
+        "VpcConfig": {
+          "SecurityGroupIds": [
+            "sg-0563f4fe5404ecb98"
+          ],
+          "SubnetIds": [
+            "subnet-0dea14ff596c46078",
+            "subnet-0ae8e73715edb5335"
+          ]
+        }
+      },
+      "DependsOn": [
+        "CreateTablesLogGroup"
+      ]
+    },
+    "FixPermissionsLambdaFunction": {
+      "Type": "AWS::Lambda::Function",
+      "Properties": {
+        "Code": {
+          "S3Bucket": {
+            "Ref": "ServerlessDeploymentBucket"
+          },
+          "S3Key": "serverless/moviedb-backend/prod/1770608503492-2026-02-09T03:41:43.492Z/moviedb-backend.zip"
+        },
+        "Handler": "src/handlers/fix-permissions.fixPermissions",
+        "Runtime": "nodejs18.x",
+        "FunctionName": "moviedb-backend-prod-fixPermissions",
+        "MemorySize": 1024,
+        "Timeout": 30,
+        "Environment": {
+          "Variables": {
+            "NODE_ENV": "production",
+            "RDS_ENDPOINT": "moviedb-postgres.ckhec6syc2fy.us-east-1.rds.amazonaws.com",
+            "RDS_PASSWORD": "MovieDB2024!",
+            "APP_DB_PASSWORD": "SecurePassword2024!",
+            "JWT_SECRET": "fb22ea282609f2da51d5f35208b4152e92c38a4a5a7ad93fa4ec36a70e3e71979f145996",
+            "CORS_ORIGIN": "https://mymoviepalour.netlify.app",
+            "DB_SSL": "true",
+            "API_STAGE": "prod"
+          }
+        },
+        "Role": {
+          "Fn::GetAtt": [
+            "IamRoleLambdaExecution",
+            "Arn"
+          ]
+        },
+        "VpcConfig": {
+          "SecurityGroupIds": [
+            "sg-0563f4fe5404ecb98"
+          ],
+          "SubnetIds": [
+            "subnet-0dea14ff596c46078",
+            "subnet-0ae8e73715edb5335"
+          ]
+        }
+      },
+      "DependsOn": [
+        "FixPermissionsLogGroup"
+      ]
     },
     "RegisterLambdaFunction": {
       "Type": "AWS::Lambda::Function",
@@ -206,7 +327,7 @@
           "S3Bucket": {
             "Ref": "ServerlessDeploymentBucket"
           },
-          "S3Key": "serverless/moviedb-backend/prod/1770265321645-2026-02-05T04:22:01.645Z/moviedb-backend.zip"
+          "S3Key": "serverless/moviedb-backend/prod/1770608503492-2026-02-09T03:41:43.492Z/moviedb-backend.zip"
         },
         "Handler": "src/handlers/auth.register",
         "Runtime": "nodejs18.x",
@@ -215,21 +336,29 @@
         "Timeout": 6,
         "Environment": {
           "Variables": {
-            "NODE_ENV": "prod",
-            "RDS_ENDPOINT": "localhost",
-            "APP_DB_PASSWORD": "password",
-            "JWT_SECRET": "your-jwt-secret-key",
-            "CORS_ORIGIN": "http://localhost:5173",
-            "DATABASE_URL": "postgresql://moviedb_user:password@localhost:5432/moviedb",
-            "COGNITO_USER_POOL_ID": "your-user-pool-id",
-            "COGNITO_CLIENT_ID": "your-client-id",
-            "API_STAGE": "dev"
+            "NODE_ENV": "production",
+            "RDS_ENDPOINT": "moviedb-postgres.ckhec6syc2fy.us-east-1.rds.amazonaws.com",
+            "RDS_PASSWORD": "MovieDB2024!",
+            "APP_DB_PASSWORD": "SecurePassword2024!",
+            "JWT_SECRET": "fb22ea282609f2da51d5f35208b4152e92c38a4a5a7ad93fa4ec36a70e3e71979f145996",
+            "CORS_ORIGIN": "https://mymoviepalour.netlify.app",
+            "DB_SSL": "true",
+            "API_STAGE": "prod"
           }
         },
         "Role": {
           "Fn::GetAtt": [
             "IamRoleLambdaExecution",
             "Arn"
+          ]
+        },
+        "VpcConfig": {
+          "SecurityGroupIds": [
+            "sg-0563f4fe5404ecb98"
+          ],
+          "SubnetIds": [
+            "subnet-0dea14ff596c46078",
+            "subnet-0ae8e73715edb5335"
           ]
         }
       },
@@ -244,7 +373,7 @@
           "S3Bucket": {
             "Ref": "ServerlessDeploymentBucket"
           },
-          "S3Key": "serverless/moviedb-backend/prod/1770265321645-2026-02-05T04:22:01.645Z/moviedb-backend.zip"
+          "S3Key": "serverless/moviedb-backend/prod/1770608503492-2026-02-09T03:41:43.492Z/moviedb-backend.zip"
         },
         "Handler": "src/handlers/auth.login",
         "Runtime": "nodejs18.x",
@@ -253,21 +382,29 @@
         "Timeout": 6,
         "Environment": {
           "Variables": {
-            "NODE_ENV": "prod",
-            "RDS_ENDPOINT": "localhost",
-            "APP_DB_PASSWORD": "password",
-            "JWT_SECRET": "your-jwt-secret-key",
-            "CORS_ORIGIN": "http://localhost:5173",
-            "DATABASE_URL": "postgresql://moviedb_user:password@localhost:5432/moviedb",
-            "COGNITO_USER_POOL_ID": "your-user-pool-id",
-            "COGNITO_CLIENT_ID": "your-client-id",
-            "API_STAGE": "dev"
+            "NODE_ENV": "production",
+            "RDS_ENDPOINT": "moviedb-postgres.ckhec6syc2fy.us-east-1.rds.amazonaws.com",
+            "RDS_PASSWORD": "MovieDB2024!",
+            "APP_DB_PASSWORD": "SecurePassword2024!",
+            "JWT_SECRET": "fb22ea282609f2da51d5f35208b4152e92c38a4a5a7ad93fa4ec36a70e3e71979f145996",
+            "CORS_ORIGIN": "https://mymoviepalour.netlify.app",
+            "DB_SSL": "true",
+            "API_STAGE": "prod"
           }
         },
         "Role": {
           "Fn::GetAtt": [
             "IamRoleLambdaExecution",
             "Arn"
+          ]
+        },
+        "VpcConfig": {
+          "SecurityGroupIds": [
+            "sg-0563f4fe5404ecb98"
+          ],
+          "SubnetIds": [
+            "subnet-0dea14ff596c46078",
+            "subnet-0ae8e73715edb5335"
           ]
         }
       },
@@ -282,7 +419,7 @@
           "S3Bucket": {
             "Ref": "ServerlessDeploymentBucket"
           },
-          "S3Key": "serverless/moviedb-backend/prod/1770265321645-2026-02-05T04:22:01.645Z/moviedb-backend.zip"
+          "S3Key": "serverless/moviedb-backend/prod/1770608503492-2026-02-09T03:41:43.492Z/moviedb-backend.zip"
         },
         "Handler": "src/handlers/user.getProfile",
         "Runtime": "nodejs18.x",
@@ -291,21 +428,29 @@
         "Timeout": 6,
         "Environment": {
           "Variables": {
-            "NODE_ENV": "prod",
-            "RDS_ENDPOINT": "localhost",
-            "APP_DB_PASSWORD": "password",
-            "JWT_SECRET": "your-jwt-secret-key",
-            "CORS_ORIGIN": "http://localhost:5173",
-            "DATABASE_URL": "postgresql://moviedb_user:password@localhost:5432/moviedb",
-            "COGNITO_USER_POOL_ID": "your-user-pool-id",
-            "COGNITO_CLIENT_ID": "your-client-id",
-            "API_STAGE": "dev"
+            "NODE_ENV": "production",
+            "RDS_ENDPOINT": "moviedb-postgres.ckhec6syc2fy.us-east-1.rds.amazonaws.com",
+            "RDS_PASSWORD": "MovieDB2024!",
+            "APP_DB_PASSWORD": "SecurePassword2024!",
+            "JWT_SECRET": "fb22ea282609f2da51d5f35208b4152e92c38a4a5a7ad93fa4ec36a70e3e71979f145996",
+            "CORS_ORIGIN": "https://mymoviepalour.netlify.app",
+            "DB_SSL": "true",
+            "API_STAGE": "prod"
           }
         },
         "Role": {
           "Fn::GetAtt": [
             "IamRoleLambdaExecution",
             "Arn"
+          ]
+        },
+        "VpcConfig": {
+          "SecurityGroupIds": [
+            "sg-0563f4fe5404ecb98"
+          ],
+          "SubnetIds": [
+            "subnet-0dea14ff596c46078",
+            "subnet-0ae8e73715edb5335"
           ]
         }
       },
@@ -320,7 +465,7 @@
           "S3Bucket": {
             "Ref": "ServerlessDeploymentBucket"
           },
-          "S3Key": "serverless/moviedb-backend/prod/1770265321645-2026-02-05T04:22:01.645Z/moviedb-backend.zip"
+          "S3Key": "serverless/moviedb-backend/prod/1770608503492-2026-02-09T03:41:43.492Z/moviedb-backend.zip"
         },
         "Handler": "src/handlers/user.updateProfile",
         "Runtime": "nodejs18.x",
@@ -329,21 +474,29 @@
         "Timeout": 6,
         "Environment": {
           "Variables": {
-            "NODE_ENV": "prod",
-            "RDS_ENDPOINT": "localhost",
-            "APP_DB_PASSWORD": "password",
-            "JWT_SECRET": "your-jwt-secret-key",
-            "CORS_ORIGIN": "http://localhost:5173",
-            "DATABASE_URL": "postgresql://moviedb_user:password@localhost:5432/moviedb",
-            "COGNITO_USER_POOL_ID": "your-user-pool-id",
-            "COGNITO_CLIENT_ID": "your-client-id",
-            "API_STAGE": "dev"
+            "NODE_ENV": "production",
+            "RDS_ENDPOINT": "moviedb-postgres.ckhec6syc2fy.us-east-1.rds.amazonaws.com",
+            "RDS_PASSWORD": "MovieDB2024!",
+            "APP_DB_PASSWORD": "SecurePassword2024!",
+            "JWT_SECRET": "fb22ea282609f2da51d5f35208b4152e92c38a4a5a7ad93fa4ec36a70e3e71979f145996",
+            "CORS_ORIGIN": "https://mymoviepalour.netlify.app",
+            "DB_SSL": "true",
+            "API_STAGE": "prod"
           }
         },
         "Role": {
           "Fn::GetAtt": [
             "IamRoleLambdaExecution",
             "Arn"
+          ]
+        },
+        "VpcConfig": {
+          "SecurityGroupIds": [
+            "sg-0563f4fe5404ecb98"
+          ],
+          "SubnetIds": [
+            "subnet-0dea14ff596c46078",
+            "subnet-0ae8e73715edb5335"
           ]
         }
       },
@@ -358,7 +511,7 @@
           "S3Bucket": {
             "Ref": "ServerlessDeploymentBucket"
           },
-          "S3Key": "serverless/moviedb-backend/prod/1770265321645-2026-02-05T04:22:01.645Z/moviedb-backend.zip"
+          "S3Key": "serverless/moviedb-backend/prod/1770608503492-2026-02-09T03:41:43.492Z/moviedb-backend.zip"
         },
         "Handler": "src/handlers/favorites.getFavorites",
         "Runtime": "nodejs18.x",
@@ -367,21 +520,29 @@
         "Timeout": 6,
         "Environment": {
           "Variables": {
-            "NODE_ENV": "prod",
-            "RDS_ENDPOINT": "localhost",
-            "APP_DB_PASSWORD": "password",
-            "JWT_SECRET": "your-jwt-secret-key",
-            "CORS_ORIGIN": "http://localhost:5173",
-            "DATABASE_URL": "postgresql://moviedb_user:password@localhost:5432/moviedb",
-            "COGNITO_USER_POOL_ID": "your-user-pool-id",
-            "COGNITO_CLIENT_ID": "your-client-id",
-            "API_STAGE": "dev"
+            "NODE_ENV": "production",
+            "RDS_ENDPOINT": "moviedb-postgres.ckhec6syc2fy.us-east-1.rds.amazonaws.com",
+            "RDS_PASSWORD": "MovieDB2024!",
+            "APP_DB_PASSWORD": "SecurePassword2024!",
+            "JWT_SECRET": "fb22ea282609f2da51d5f35208b4152e92c38a4a5a7ad93fa4ec36a70e3e71979f145996",
+            "CORS_ORIGIN": "https://mymoviepalour.netlify.app",
+            "DB_SSL": "true",
+            "API_STAGE": "prod"
           }
         },
         "Role": {
           "Fn::GetAtt": [
             "IamRoleLambdaExecution",
             "Arn"
+          ]
+        },
+        "VpcConfig": {
+          "SecurityGroupIds": [
+            "sg-0563f4fe5404ecb98"
+          ],
+          "SubnetIds": [
+            "subnet-0dea14ff596c46078",
+            "subnet-0ae8e73715edb5335"
           ]
         }
       },
@@ -396,7 +557,7 @@
           "S3Bucket": {
             "Ref": "ServerlessDeploymentBucket"
           },
-          "S3Key": "serverless/moviedb-backend/prod/1770265321645-2026-02-05T04:22:01.645Z/moviedb-backend.zip"
+          "S3Key": "serverless/moviedb-backend/prod/1770608503492-2026-02-09T03:41:43.492Z/moviedb-backend.zip"
         },
         "Handler": "src/handlers/favorites.addFavorite",
         "Runtime": "nodejs18.x",
@@ -405,21 +566,29 @@
         "Timeout": 6,
         "Environment": {
           "Variables": {
-            "NODE_ENV": "prod",
-            "RDS_ENDPOINT": "localhost",
-            "APP_DB_PASSWORD": "password",
-            "JWT_SECRET": "your-jwt-secret-key",
-            "CORS_ORIGIN": "http://localhost:5173",
-            "DATABASE_URL": "postgresql://moviedb_user:password@localhost:5432/moviedb",
-            "COGNITO_USER_POOL_ID": "your-user-pool-id",
-            "COGNITO_CLIENT_ID": "your-client-id",
-            "API_STAGE": "dev"
+            "NODE_ENV": "production",
+            "RDS_ENDPOINT": "moviedb-postgres.ckhec6syc2fy.us-east-1.rds.amazonaws.com",
+            "RDS_PASSWORD": "MovieDB2024!",
+            "APP_DB_PASSWORD": "SecurePassword2024!",
+            "JWT_SECRET": "fb22ea282609f2da51d5f35208b4152e92c38a4a5a7ad93fa4ec36a70e3e71979f145996",
+            "CORS_ORIGIN": "https://mymoviepalour.netlify.app",
+            "DB_SSL": "true",
+            "API_STAGE": "prod"
           }
         },
         "Role": {
           "Fn::GetAtt": [
             "IamRoleLambdaExecution",
             "Arn"
+          ]
+        },
+        "VpcConfig": {
+          "SecurityGroupIds": [
+            "sg-0563f4fe5404ecb98"
+          ],
+          "SubnetIds": [
+            "subnet-0dea14ff596c46078",
+            "subnet-0ae8e73715edb5335"
           ]
         }
       },
@@ -434,7 +603,7 @@
           "S3Bucket": {
             "Ref": "ServerlessDeploymentBucket"
           },
-          "S3Key": "serverless/moviedb-backend/prod/1770265321645-2026-02-05T04:22:01.645Z/moviedb-backend.zip"
+          "S3Key": "serverless/moviedb-backend/prod/1770608503492-2026-02-09T03:41:43.492Z/moviedb-backend.zip"
         },
         "Handler": "src/handlers/favorites.removeFavorite",
         "Runtime": "nodejs18.x",
@@ -443,15 +612,14 @@
         "Timeout": 6,
         "Environment": {
           "Variables": {
-            "NODE_ENV": "prod",
-            "RDS_ENDPOINT": "localhost",
-            "APP_DB_PASSWORD": "password",
-            "JWT_SECRET": "your-jwt-secret-key",
-            "CORS_ORIGIN": "http://localhost:5173",
-            "DATABASE_URL": "postgresql://moviedb_user:password@localhost:5432/moviedb",
-            "COGNITO_USER_POOL_ID": "your-user-pool-id",
-            "COGNITO_CLIENT_ID": "your-client-id",
-            "API_STAGE": "dev"
+            "NODE_ENV": "production",
+            "RDS_ENDPOINT": "moviedb-postgres.ckhec6syc2fy.us-east-1.rds.amazonaws.com",
+            "RDS_PASSWORD": "MovieDB2024!",
+            "APP_DB_PASSWORD": "SecurePassword2024!",
+            "JWT_SECRET": "fb22ea282609f2da51d5f35208b4152e92c38a4a5a7ad93fa4ec36a70e3e71979f145996",
+            "CORS_ORIGIN": "https://mymoviepalour.netlify.app",
+            "DB_SSL": "true",
+            "API_STAGE": "prod"
           }
         },
         "Role": {
@@ -459,80 +627,109 @@
             "IamRoleLambdaExecution",
             "Arn"
           ]
+        },
+        "VpcConfig": {
+          "SecurityGroupIds": [
+            "sg-0563f4fe5404ecb98"
+          ],
+          "SubnetIds": [
+            "subnet-0dea14ff596c46078",
+            "subnet-0ae8e73715edb5335"
+          ]
         }
       },
       "DependsOn": [
         "RemoveFavoriteLogGroup"
       ]
     },
-    "RegisterLambdaVersionqTm3wjfhJVbrFp5jAhcPHhRCCrRtBK22g9rN1YNyZM": {
+    "CreateTablesLambdaVersionGkQiqaPFouhwCTEyPmPOk896UH8gL1I0YvqLv7Y0": {
+      "Type": "AWS::Lambda::Version",
+      "DeletionPolicy": "Retain",
+      "Properties": {
+        "FunctionName": {
+          "Ref": "CreateTablesLambdaFunction"
+        },
+        "CodeSha256": "e8G5qtYqHM2nyxFbZspeeFRN2TSbN5FGX8MJk7xtUBI="
+      }
+    },
+    "FixPermissionsLambdaVersionY1WeNNBqJ30HrmMIFG0jJJNoYN5Os1xb713KqB93Xs": {
+      "Type": "AWS::Lambda::Version",
+      "DeletionPolicy": "Retain",
+      "Properties": {
+        "FunctionName": {
+          "Ref": "FixPermissionsLambdaFunction"
+        },
+        "CodeSha256": "e8G5qtYqHM2nyxFbZspeeFRN2TSbN5FGX8MJk7xtUBI="
+      }
+    },
+    "RegisterLambdaVersionXASTNedVrT2YLuwoP4R6pU2qWD3HsKFbBnGpGGD0": {
       "Type": "AWS::Lambda::Version",
       "DeletionPolicy": "Retain",
       "Properties": {
         "FunctionName": {
           "Ref": "RegisterLambdaFunction"
         },
-        "CodeSha256": "u/8LeonmcyrJpr7XimEqd/NDSC+t0pCh3mi89e+H/vI="
+        "CodeSha256": "e8G5qtYqHM2nyxFbZspeeFRN2TSbN5FGX8MJk7xtUBI="
       }
     },
-    "LoginLambdaVersiontk4jNPQiaCbZkPZXNEykZHFB9sBJTFAdu5EU1wtR4": {
+    "LoginLambdaVersionpHoMl2S8LacM1Z0gTNCZW9oZ6DfnWa4bIyavNi8e60": {
       "Type": "AWS::Lambda::Version",
       "DeletionPolicy": "Retain",
       "Properties": {
         "FunctionName": {
           "Ref": "LoginLambdaFunction"
         },
-        "CodeSha256": "u/8LeonmcyrJpr7XimEqd/NDSC+t0pCh3mi89e+H/vI="
+        "CodeSha256": "e8G5qtYqHM2nyxFbZspeeFRN2TSbN5FGX8MJk7xtUBI="
       }
     },
-    "GetProfileLambdaVersion0x0lmQVS1zffrnbJZRQ32WoysebloMUrOcKDc6nas": {
+    "GetProfileLambdaVersionIEQT8qg6MKuxSMDT6u6w0YKcZ27GEaUOMbcFqbxDJo": {
       "Type": "AWS::Lambda::Version",
       "DeletionPolicy": "Retain",
       "Properties": {
         "FunctionName": {
           "Ref": "GetProfileLambdaFunction"
         },
-        "CodeSha256": "u/8LeonmcyrJpr7XimEqd/NDSC+t0pCh3mi89e+H/vI="
+        "CodeSha256": "e8G5qtYqHM2nyxFbZspeeFRN2TSbN5FGX8MJk7xtUBI="
       }
     },
-    "UpdateProfileLambdaVersionU9UG0MlEV4QykCTxDbqZxgboBNFNpbmkszPLomQHo": {
+    "UpdateProfileLambdaVersionYf0rE9Wrssq5SC7ym9SpAx4CRNfPhOS8TXZjewlWq1g": {
       "Type": "AWS::Lambda::Version",
       "DeletionPolicy": "Retain",
       "Properties": {
         "FunctionName": {
           "Ref": "UpdateProfileLambdaFunction"
         },
-        "CodeSha256": "u/8LeonmcyrJpr7XimEqd/NDSC+t0pCh3mi89e+H/vI="
+        "CodeSha256": "e8G5qtYqHM2nyxFbZspeeFRN2TSbN5FGX8MJk7xtUBI="
       }
     },
-    "GetFavoritesLambdaVersionrCatK5m5IC8jXGrBexTc0uoPpBH7lz9LNcw2t52Do": {
+    "GetFavoritesLambdaVersion16wtGWhOghCafkfXGI7uUmpVwdNhWKZ18stUjQCOZA": {
       "Type": "AWS::Lambda::Version",
       "DeletionPolicy": "Retain",
       "Properties": {
         "FunctionName": {
           "Ref": "GetFavoritesLambdaFunction"
         },
-        "CodeSha256": "u/8LeonmcyrJpr7XimEqd/NDSC+t0pCh3mi89e+H/vI="
+        "CodeSha256": "e8G5qtYqHM2nyxFbZspeeFRN2TSbN5FGX8MJk7xtUBI="
       }
     },
-    "AddFavoriteLambdaVersionvAf6WvMPz9NaOUYsWIOv3KmG6MAndmquMUuGghbK0": {
+    "AddFavoriteLambdaVersiong9MVwi6l10Pk7anQbjZaESl0TE1Vu2EY8xKwsRfUQPI": {
       "Type": "AWS::Lambda::Version",
       "DeletionPolicy": "Retain",
       "Properties": {
         "FunctionName": {
           "Ref": "AddFavoriteLambdaFunction"
         },
-        "CodeSha256": "u/8LeonmcyrJpr7XimEqd/NDSC+t0pCh3mi89e+H/vI="
+        "CodeSha256": "e8G5qtYqHM2nyxFbZspeeFRN2TSbN5FGX8MJk7xtUBI="
       }
     },
-    "RemoveFavoriteLambdaVersionfKeDMSwWvZTIakOFujQQ0r3Cj6KVaokSB5UThuZg": {
+    "RemoveFavoriteLambdaVersionGFTGhOmeZ9ZwNM2hOgg5KsGw59kHyhuTdrbkBEOzzA": {
       "Type": "AWS::Lambda::Version",
       "DeletionPolicy": "Retain",
       "Properties": {
         "FunctionName": {
           "Ref": "RemoveFavoriteLambdaFunction"
         },
-        "CodeSha256": "u/8LeonmcyrJpr7XimEqd/NDSC+t0pCh3mi89e+H/vI="
+        "CodeSha256": "e8G5qtYqHM2nyxFbZspeeFRN2TSbN5FGX8MJk7xtUBI="
       }
     },
     "ApiGatewayRestApi": {
@@ -664,8 +861,8 @@
             {
               "StatusCode": "200",
               "ResponseParameters": {
-                "method.response.header.Access-Control-Allow-Origin": "'*'",
-                "method.response.header.Access-Control-Allow-Headers": "'Content-Type,X-Amz-Date,Authorization,X-Api-Key,X-Amz-Security-Token,X-Amz-User-Agent,X-Amzn-Trace-Id'",
+                "method.response.header.Access-Control-Allow-Origin": "'https://mymoviepalour.netlify.app'",
+                "method.response.header.Access-Control-Allow-Headers": "'Content-Type,Authorization'",
                 "method.response.header.Access-Control-Allow-Methods": "'OPTIONS,POST'"
               },
               "ResponseTemplates": {
@@ -709,8 +906,8 @@
             {
               "StatusCode": "200",
               "ResponseParameters": {
-                "method.response.header.Access-Control-Allow-Origin": "'*'",
-                "method.response.header.Access-Control-Allow-Headers": "'Content-Type,X-Amz-Date,Authorization,X-Api-Key,X-Amz-Security-Token,X-Amz-User-Agent,X-Amzn-Trace-Id'",
+                "method.response.header.Access-Control-Allow-Origin": "'https://mymoviepalour.netlify.app'",
+                "method.response.header.Access-Control-Allow-Headers": "'Content-Type,Authorization'",
                 "method.response.header.Access-Control-Allow-Methods": "'OPTIONS,POST'"
               },
               "ResponseTemplates": {
@@ -754,8 +951,8 @@
             {
               "StatusCode": "200",
               "ResponseParameters": {
-                "method.response.header.Access-Control-Allow-Origin": "'*'",
-                "method.response.header.Access-Control-Allow-Headers": "'Content-Type,X-Amz-Date,Authorization,X-Api-Key,X-Amz-Security-Token,X-Amz-User-Agent,X-Amzn-Trace-Id'",
+                "method.response.header.Access-Control-Allow-Origin": "'https://mymoviepalour.netlify.app'",
+                "method.response.header.Access-Control-Allow-Headers": "'Content-Type,Authorization'",
                 "method.response.header.Access-Control-Allow-Methods": "'OPTIONS,PUT,GET'"
               },
               "ResponseTemplates": {
@@ -799,8 +996,8 @@
             {
               "StatusCode": "200",
               "ResponseParameters": {
-                "method.response.header.Access-Control-Allow-Origin": "'*'",
-                "method.response.header.Access-Control-Allow-Headers": "'Content-Type,X-Amz-Date,Authorization,X-Api-Key,X-Amz-Security-Token,X-Amz-User-Agent,X-Amzn-Trace-Id'",
+                "method.response.header.Access-Control-Allow-Origin": "'https://mymoviepalour.netlify.app'",
+                "method.response.header.Access-Control-Allow-Headers": "'Content-Type,Authorization'",
                 "method.response.header.Access-Control-Allow-Methods": "'OPTIONS,POST,GET'"
               },
               "ResponseTemplates": {
@@ -844,8 +1041,8 @@
             {
               "StatusCode": "200",
               "ResponseParameters": {
-                "method.response.header.Access-Control-Allow-Origin": "'*'",
-                "method.response.header.Access-Control-Allow-Headers": "'Content-Type,X-Amz-Date,Authorization,X-Api-Key,X-Amz-Security-Token,X-Amz-User-Agent,X-Amzn-Trace-Id'",
+                "method.response.header.Access-Control-Allow-Origin": "'https://mymoviepalour.netlify.app'",
+                "method.response.header.Access-Control-Allow-Headers": "'Content-Type,Authorization'",
                 "method.response.header.Access-Control-Allow-Methods": "'OPTIONS,DELETE'"
               },
               "ResponseTemplates": {
@@ -1184,7 +1381,7 @@
         "RemoveFavoriteLambdaPermissionApiGateway"
       ]
     },
-    "ApiGatewayDeployment1770265308506": {
+    "ApiGatewayDeployment1770608490788": {
       "Type": "AWS::ApiGateway::Deployment",
       "Properties": {
         "RestApiId": {
@@ -1476,10 +1673,28 @@
         "Name": "sls-moviedb-backend-prod-ServerlessDeploymentBucketName"
       }
     },
+    "CreateTablesLambdaFunctionQualifiedArn": {
+      "Description": "Current Lambda function version",
+      "Value": {
+        "Ref": "CreateTablesLambdaVersionGkQiqaPFouhwCTEyPmPOk896UH8gL1I0YvqLv7Y0"
+      },
+      "Export": {
+        "Name": "sls-moviedb-backend-prod-CreateTablesLambdaFunctionQualifiedArn"
+      }
+    },
+    "FixPermissionsLambdaFunctionQualifiedArn": {
+      "Description": "Current Lambda function version",
+      "Value": {
+        "Ref": "FixPermissionsLambdaVersionY1WeNNBqJ30HrmMIFG0jJJNoYN5Os1xb713KqB93Xs"
+      },
+      "Export": {
+        "Name": "sls-moviedb-backend-prod-FixPermissionsLambdaFunctionQualifiedArn"
+      }
+    },
     "RegisterLambdaFunctionQualifiedArn": {
       "Description": "Current Lambda function version",
       "Value": {
-        "Ref": "RegisterLambdaVersionqTm3wjfhJVbrFp5jAhcPHhRCCrRtBK22g9rN1YNyZM"
+        "Ref": "RegisterLambdaVersionXASTNedVrT2YLuwoP4R6pU2qWD3HsKFbBnGpGGD0"
       },
       "Export": {
         "Name": "sls-moviedb-backend-prod-RegisterLambdaFunctionQualifiedArn"
@@ -1488,7 +1703,7 @@
     "LoginLambdaFunctionQualifiedArn": {
       "Description": "Current Lambda function version",
       "Value": {
-        "Ref": "LoginLambdaVersiontk4jNPQiaCbZkPZXNEykZHFB9sBJTFAdu5EU1wtR4"
+        "Ref": "LoginLambdaVersionpHoMl2S8LacM1Z0gTNCZW9oZ6DfnWa4bIyavNi8e60"
       },
       "Export": {
         "Name": "sls-moviedb-backend-prod-LoginLambdaFunctionQualifiedArn"
@@ -1497,7 +1712,7 @@
     "GetProfileLambdaFunctionQualifiedArn": {
       "Description": "Current Lambda function version",
       "Value": {
-        "Ref": "GetProfileLambdaVersion0x0lmQVS1zffrnbJZRQ32WoysebloMUrOcKDc6nas"
+        "Ref": "GetProfileLambdaVersionIEQT8qg6MKuxSMDT6u6w0YKcZ27GEaUOMbcFqbxDJo"
       },
       "Export": {
         "Name": "sls-moviedb-backend-prod-GetProfileLambdaFunctionQualifiedArn"
@@ -1506,7 +1721,7 @@
     "UpdateProfileLambdaFunctionQualifiedArn": {
       "Description": "Current Lambda function version",
       "Value": {
-        "Ref": "UpdateProfileLambdaVersionU9UG0MlEV4QykCTxDbqZxgboBNFNpbmkszPLomQHo"
+        "Ref": "UpdateProfileLambdaVersionYf0rE9Wrssq5SC7ym9SpAx4CRNfPhOS8TXZjewlWq1g"
       },
       "Export": {
         "Name": "sls-moviedb-backend-prod-UpdateProfileLambdaFunctionQualifiedArn"
@@ -1515,7 +1730,7 @@
     "GetFavoritesLambdaFunctionQualifiedArn": {
       "Description": "Current Lambda function version",
       "Value": {
-        "Ref": "GetFavoritesLambdaVersionrCatK5m5IC8jXGrBexTc0uoPpBH7lz9LNcw2t52Do"
+        "Ref": "GetFavoritesLambdaVersion16wtGWhOghCafkfXGI7uUmpVwdNhWKZ18stUjQCOZA"
       },
       "Export": {
         "Name": "sls-moviedb-backend-prod-GetFavoritesLambdaFunctionQualifiedArn"
@@ -1524,7 +1739,7 @@
     "AddFavoriteLambdaFunctionQualifiedArn": {
       "Description": "Current Lambda function version",
       "Value": {
-        "Ref": "AddFavoriteLambdaVersionvAf6WvMPz9NaOUYsWIOv3KmG6MAndmquMUuGghbK0"
+        "Ref": "AddFavoriteLambdaVersiong9MVwi6l10Pk7anQbjZaESl0TE1Vu2EY8xKwsRfUQPI"
       },
       "Export": {
         "Name": "sls-moviedb-backend-prod-AddFavoriteLambdaFunctionQualifiedArn"
@@ -1533,7 +1748,7 @@
     "RemoveFavoriteLambdaFunctionQualifiedArn": {
       "Description": "Current Lambda function version",
       "Value": {
-        "Ref": "RemoveFavoriteLambdaVersionfKeDMSwWvZTIakOFujQQ0r3Cj6KVaokSB5UThuZg"
+        "Ref": "RemoveFavoriteLambdaVersionGFTGhOmeZ9ZwNM2hOgg5KsGw59kHyhuTdrbkBEOzzA"
       },
       "Export": {
         "Name": "sls-moviedb-backend-prod-RemoveFavoriteLambdaFunctionQualifiedArn"
